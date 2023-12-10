@@ -13,10 +13,7 @@ class WrappedBlock(torch.nn.Module):
         self.normalize = False
 
     def forward(self, *args, **kwargs):
-        print()
-        print("WrappedBlock.forward()")
         output = self.block(*args, **kwargs)
-        print("output[0].shape: ", output[0].shape)
 
         if isinstance(output, tuple):
             self.output = output[0]
@@ -24,7 +21,6 @@ class WrappedBlock(torch.nn.Module):
         else:
             self.output = output
             modified = output
-        print("modified.shape: ", modified.shape)
             
         if self.controller is not None:
         
@@ -32,7 +28,6 @@ class WrappedBlock(torch.nn.Module):
 
             if self.mask is not None:
                 mask = self.mask
-                print("setting mask: ", mask)
 
             # we should ignore the padding tokens when doing the activation addition
             # mask has ones for non padding tokens and zeros at padding tokens.
@@ -48,7 +43,6 @@ class WrappedBlock(torch.nn.Module):
                 # print(f"Warning: block {self.block_name} does not contain information 'position_ids' about token types. When using batches this can lead to unexpected results.")
                 mask = 1.0
 
-            print("self.controller.shape: ", self.controller.shape)
             if len(self.controller.shape) == 1:
                 self.controller = self.controller.reshape(1, 1, -1)
             assert len(self.controller.shape) == len(modified.shape), f"Shape of controller {self.controller.shape} does not match shape of modified {modified.shape}."
@@ -62,7 +56,6 @@ class WrappedBlock(torch.nn.Module):
                 modified[:, self.token_pos] = self.operator(modified[:, self.token_pos], self.controller * mask)
             elif isinstance(self.token_pos, str):
                 if self.token_pos == "end":
-                    print("in end")
                     len_token = self.controller.shape[1]
                     modified[:, -len_token:] = self.operator(modified[:, -len_token:], self.controller * mask)
                 elif self.token_pos == "start":
@@ -89,14 +82,8 @@ class WrappedBlock(torch.nn.Module):
         self.controller = activations.squeeze()
         self.mask = masks
         self.token_pos = token_pos
-        print("self.controller.shape: ", self.controller.shape)
-        print("self.token_pos: ", self.token_pos)
         if operator == 'linear_comb':
-            print("set_controller linear_comb")
             def op(current, controller):
-                print("in op")
-                print("current.shape: ", current.shape)
-                print("controller,shape: ", controller.shape)
                 return current + controller
         elif operator == 'piecewise_linear':
             def op(current, controller):
@@ -127,8 +114,6 @@ class WrappedReadingVecModel(torch.nn.Module):
         self.tokenizer = tokenizer
         
     def forward(self, *args, **kwargs):
-        print()
-        print("WrappedReadingVecModel.forward()") 
         return self.model(*args, **kwargs)
         
     def generate(self, **kwargs):
@@ -270,8 +255,6 @@ class WrappedReadingVecModel(torch.nn.Module):
             current_layer = self.model.model.layers[layer_id]
 
             if block_name == 'decoder_block':
-                print()
-                print("Entering current_layer.set_controller()")
                 current_layer.set_controller(activations, token_pos, masks, normalize, operator)
             elif self.is_wrapped(current_layer):
                 current_block = current_layer.block  
